@@ -1,5 +1,6 @@
 import * as http2 from 'http2'
 
+const SERVER_DELAY = 150
 const NUM_REQUESTS = 1500
 const OUTSTANDING_REQUESTS_PER_CONNECTION = 120
 const CONNECTIONS = 3
@@ -23,7 +24,7 @@ function createClient() {
 
 function makeRequest(client: http2.ClientHttp2Session) {
     return new Promise(resolve => {
-        const req = client.request({ ':path': '/' })
+        const req = client.request({ ':path': `/delay/${SERVER_DELAY}` })
 
         req.on('response', (headers, flags) => {
             // for (const name in headers) {
