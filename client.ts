@@ -5,7 +5,7 @@ const NUM_REQUESTS = 1500
 const OUTSTANDING_REQUESTS_PER_CONNECTION = 120
 const CONNECTIONS = 3
 
-let requests = NUM_REQUESTS
+let requests = 0
 
 const clients = new Array<http2.ClientHttp2Session>()
 
@@ -18,7 +18,20 @@ function createClient() {
         'https://mattias-http2-1224252573.eu-central-1.elb.amazonaws.com/',
         opt,
     )
-    client.on('error', err => console.error('error', err))
+    setInterval(
+        () =>
+            client.ping((err, duration) => {
+                if (err) {
+                    console.log('ping err after ' + duration + ' ms')
+                }
+            }),
+        15000,
+    )
+    client.on('connect', arg => console.log(new Date() + ' connect'))
+    client.on('error', arg => console.log(new Date() + ' error', arg))
+    client.on('close', arg => console.log(new Date() + ' close', arg))
+    client.on('ping', arg => console.log(new Date() + ' ping', arg))
+    client.on('goaway', arg => console.log(new Date() + ' goaway', arg))
     return client
 }
 
@@ -67,19 +80,25 @@ async function run() {
 
     await sleep(10000)
 
-    const start = Date.now()
-    let promises = new Array<Promise<void>>()
-    for (let client of clients) {
-        for (let t = 0; t < OUTSTANDING_REQUESTS_PER_CONNECTION; t++) {
-            promises.push(thread(client))
+    while (true) {
+        const start = Date.now()
+        requests = NUM_REQUESTS
+        let promises = new Array<Promise<void>>()
+        for (let client of clients) {
+            for (let t = 0; t < OUTSTANDING_REQUESTS_PER_CONNECTION; t++) {
+                promises.push(thread(client))
+            }
         }
+
+        await Promise.all(promises)
+        console.log('timing', Date.now() - start)
+
+        await sleep(10 * 60 * 1000)
     }
 
-    await Promise.all(promises)
-    console.log('timing', Date.now() - start)
-    for (let client of clients) {
-        client.close()
-    }
+    // for (let client of clients) {
+    //     client.close()
+    // }
 }
 
 run()
