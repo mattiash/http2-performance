@@ -16,6 +16,7 @@ class Session {
     private client?: http2.ClientHttp2Session
     private outstandingRequests = 0
     private pingInterval: NodeJS.Timeout
+    private destroying = false
 
     constructor(private basePath: string, private maxOutstanding: number) {
         this.createClient()
@@ -40,7 +41,9 @@ class Session {
         client.on('close', (arg: any) => {
             debug('close', arg)
             this.client = undefined
-            this.createClient()
+            if (!this.destroying) {
+                this.createClient()
+            }
         })
         client.on('ping', () => debug('ping'))
         client.on('goaway', arg => debug('goaway', arg))
@@ -98,6 +101,15 @@ class Session {
             return false
         }
     }
+
+    destroy() {
+        debug('destroying Session')
+        this.destroying = true
+        clearInterval(this.pingInterval)
+        if (this.client) {
+            this.client.destroy()
+        }
+    }
 }
 
 export class AspRequester {
@@ -142,6 +154,13 @@ export class AspRequester {
                 this.nextSession = sessionNum + 1
                 break
             }
+        }
+    }
+
+    destroy() {
+        debug('destroying AspRequester')
+        for (const session of this.sessions) {
+            session.destroy()
         }
     }
 }

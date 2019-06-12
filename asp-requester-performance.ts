@@ -36,17 +36,11 @@ async function run() {
             )
         }
 
-        // globalSession.close()
-
         await Promise.all(promises)
         console.log('timing', Date.now() - start)
 
         await sleep(10 * 60 * 1000)
     }
-
-    // for (let client of clients) {
-    //     client.close()
-    // }
 }
 
 run()
